@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Flappy Wish</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+  <div id="score-display">0</div>
+
+  <div id="start-screen" class="overlay active">
+    <h1>Tap to Fly</h1>
+    <p>Pass 10 pipes for a surprise!</p>
+  </div>
+
+  <div id="game-over-screen" class="overlay">
+    <h1>Game Over</h1>
+    <button onclick="resetGame()">Try Again</button>
+  </div>
+
+  <div id="victory-screen" class="overlay">
+    <div id="confetti-container"></div>
+    
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
