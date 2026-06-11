@@ -6,7 +6,6 @@ const scoreDisplay = document.getElementById('score-display');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const victoryScreen = document.getElementById('victory-screen');
-// ADDED: Link to the confetti container
 const confettiContainer = document.getElementById('confetti-container');
 
 // 1. Load the custom player image (The Bird)
@@ -180,26 +179,22 @@ function drawVictoryScreen() {
       
       ctx.drawImage(victoryImage, offsetX, offsetY, targetWidth, targetHeight);
       
-      // 3. Display the custom text below the image (MODIFIED: Made smaller)
+      // 3. Display the custom text below the image
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
-      
-      // Changed font size from bold 22px to bold 16px sans-serif
       ctx.font = 'bold 16px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, offsetY + targetHeight + 60);
+      ctx.fillText("Well done noob, btw this is for you Anna", canvas.width / 2, offsetY + targetHeight + 60);
       
   } else {
       // Fallback if end_reward.png is missing
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.font = '24px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, canvas.height / 2);
+      ctx.fillText("Well done noob, btw this is for you Anna", canvas.width / 2, canvas.height / 2);
   }
 }
 
-// =======================================================
-// ADDED: Celebratory Confetti Logic
-// =======================================================
+// Celebratory Confetti Logic
 function createConfetti() {
   const confettiCount = 50; // How many particles to create
   const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6']; // Rainbow colors
@@ -232,7 +227,6 @@ function triggerVictory() {
       gameState = 'VICTORY';
       flashIntensity = 1; // Trigger the flash bang effect
       victoryScreen.classList.add('active');
-      // ADDED: Trigger the confetti explosion
       createConfetti();
   }
 }
@@ -252,7 +246,7 @@ window.resetGame = function() {
   gameOverScreen.classList.remove('active');
   victoryScreen.classList.remove('active');
   
-  // ADDED: Remove confetti divs when restarting
+  // Remove confetti divs when restarting
   confettiContainer.innerHTML = '';
   
   bird.flap();
@@ -265,14 +259,27 @@ function handleInput() {
   } else if (gameState === 'PLAYING') {
     bird.flap();
   } else if (gameState === 'VICTORY' && flashIntensity <= 0) {
-    // Let them click anywhere to restart after seeing the celebration
     resetGame();
+  } else if (gameState === 'GAMEOVER') {
+    // Allows tapping anywhere on the screen to try again
+    resetGame(); 
   }
 }
 
-container.addEventListener('mousedown', handleInput);
+// Event Listeners for click/touch
+container.addEventListener('mousedown', (e) => {
+  // Don't intercept button clicks
+  if (e.target.tagName === 'BUTTON') return;
+  handleInput();
+});
+
 container.addEventListener('touchstart', (e) => {
-  e.preventDefault(); // Prevents mobile browsers from zooming in
+  // If the user tapped a button, let the browser click it normally
+  if (e.target.tagName === 'BUTTON') {
+    return;
+  }
+  // Otherwise, prevent double-tap zoom and handle the game tap
+  e.preventDefault(); 
   handleInput();
 }, { passive: false });
 
