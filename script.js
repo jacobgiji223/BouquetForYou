@@ -14,16 +14,13 @@ playerImage.src = 'friend.png';
 const victoryImage = new Image();
 victoryImage.src = 'end_reward.png'; 
 
-// Load Audio (Make sure jump.mp3 and cheer.mp3 are in your folder!)
+// Load Audio
 const jumpSound = new Audio('jump.mp3');
 const cheerSound = new Audio('cheer.mp3');
 
-function resizeCanvas() {
-  canvas.width = container.clientWidth;
-  canvas.height = container.clientHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+// Lock the internal resolution so physics are identical on PC and Mobile
+canvas.width = 400;
+canvas.height = 700;
 
 // Game Variables
 let frames = 0;
@@ -32,7 +29,12 @@ let gameState = 'START';
 const targetScore = 45; // Win condition is exactly 45
 
 let flashIntensity = 0;
-let confettiParticles = []; // Moved confetti into the Canvas so it NEVER fails
+let confettiParticles = []; 
+
+// FPS Lock Variables
+let lastTime = 0;
+const targetFPS = 60;
+const frameInterval = 1000 / targetFPS;
 
 // The Player (Bird)
 const bird = {
@@ -300,26 +302,37 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Main Loop
-function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+// Main Loop with 60 FPS Lock
+function loop(currentTime) {
+  requestAnimationFrame(loop);
 
-  if (gameState === 'PLAYING') {
-    updatePipes();
-    drawPipes();
-    bird.update();
-    bird.draw();
-    drawAndProcessConfetti(); // Draw confetti over the game
-    frames++;
-  } else if (gameState === 'GAMEOVER' || gameState === 'START') {
-    drawPipes();
-    bird.draw();
-  } else if (gameState === 'VICTORY') {
+  const deltaTime = currentTime - lastTime;
+
+  // Run game logic only if enough time has passed (~16.6ms for 60fps)
+  if (deltaTime >= frameInterval) {
+    lastTime = currentTime - (deltaTime % frameInterval);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === 'PLAYING') {
+      updatePipes();
+      drawPipes();
+      bird.update();
+      bird.draw();
+      drawAndProcessConfetti(); // Draw confetti over the game
+      frames++;
+    } else if (gameState === 'GAMEOVER' || gameState === 'START') {
+      drawPipes();
+      bird.draw();
+    } else if (gameState === 'VICTORY') {
       drawVictoryScreen();
       drawAndProcessConfetti(); // Draw confetti over the victory screen
+    }
   }
-
-  requestAnimationFrame(loop);
 }
 
-loop();
+// Start the animation loop and pass initial time
+requestAnimationFrame((time) => {
+    lastTime = time;
+    loop(time);
+});
