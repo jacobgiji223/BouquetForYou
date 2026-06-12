@@ -6,17 +6,18 @@ const scoreDisplay = document.getElementById('score-display');
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const victoryScreen = document.getElementById('victory-screen');
-const confettiContainer = document.getElementById('confetti-container');
 
-// 1. Load the custom player image (The Bird)
+// Load Images
 const playerImage = new Image();
 playerImage.src = 'friend.png'; 
 
-// 2. Load the victory image (Eminem with the red rose)
 const victoryImage = new Image();
 victoryImage.src = 'end_reward.png'; 
 
-// Adjust canvas size to match its CSS container
+// Load Audio (Make sure jump.mp3 and cheer.mp3 are in your folder!)
+const jumpSound = new Audio('jump.mp3');
+const cheerSound = new Audio('cheer.mp3');
+
 function resizeCanvas() {
   canvas.width = container.clientWidth;
   canvas.height = container.clientHeight;
@@ -27,31 +28,29 @@ resizeCanvas();
 // Game Variables
 let frames = 0;
 let score = 0;
-let gameState = 'START'; // Can be: START, PLAYING, GAMEOVER, VICTORY
-const targetScore = 10;
+let gameState = 'START'; 
+const targetScore = 45; // Win condition is exactly 45
 
-// Flashy Effect State
 let flashIntensity = 0;
+let confettiParticles = []; // Moved confetti into the Canvas so it NEVER fails
 
-// The Player (Bird) Object
+// The Player (Bird)
 const bird = {
   x: 60,
   y: canvas.height / 2,
-  radius: 30, // Slightly bigger so your friend's face is easier to see!
+  radius: 30, 
   velocity: 0,
-  gravity: 0.3, // Give the bird some weight
-  jump: -6,    // Snappy jump
+  gravity: 0.3, 
+  jump: -6,    
   
   draw() {
-    // Check if the friend.png image successfully loaded
     if (playerImage.complete && playerImage.naturalWidth > 0) {
       let size = this.radius * 2; 
       ctx.drawImage(playerImage, this.x - this.radius, this.y - this.radius, size, size);
     } else {
-      // Fallback: If image is missing, draw the yellow circle so the game doesn't crash
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFD700'; // Yellow
+      ctx.fillStyle = '#FFD700'; 
       ctx.fill();
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 2;
@@ -64,12 +63,10 @@ const bird = {
     this.velocity += this.gravity;
     this.y += this.velocity;
 
-    // Hit the floor
     if (this.y + this.radius >= canvas.height) {
       this.y = canvas.height - this.radius;
       triggerGameOver();
     }
-    // Hit the ceiling
     if (this.y - this.radius <= 0) {
       this.y = this.radius;
       this.velocity = 0;
@@ -78,33 +75,36 @@ const bird = {
   
   flap() {
     this.velocity = this.jump;
+    
+    // ONLY play the jump sound if the cheer sound is NOT currently playing
+    if (cheerSound.paused || cheerSound.ended) {
+        jumpSound.currentTime = 0; 
+        jumpSound.play().catch(e => console.log('Audio blocked by browser until interacted'));
+    }
   }
 };
 
-// Pipes Setup (Balanced easy settings)
+// Pipes Setup
 let pipes = [];
 const pipeWidth = 60;
-const pipeGap = 320; // Wide and forgiving
-const pipeSpeed = 2.5; // Balanced pace
+const pipeGap = 180; 
+const pipeSpeed = 4; 
 
 function drawPipes() {
-  ctx.fillStyle = '#2ecc71'; // Green pipes
+  ctx.fillStyle = '#2ecc71'; 
   ctx.strokeStyle = '#27ae60';
   ctx.lineWidth = 4;
   
   pipes.forEach(pipe => {
-    // Top pipe
     ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
     ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-    // Bottom pipe
     ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
     ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
   });
 }
 
 function updatePipes() {
-  // Spawn a new pipe every 150 frames
-  if (frames % 150 === 0) {
+  if (frames % 100 === 0) {
     let minPipeHeight = 50;
     let maxPipeHeight = canvas.height - pipeGap - minPipeHeight;
     let topHeight = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1) + minPipeHeight);
@@ -121,7 +121,6 @@ function updatePipes() {
     let p = pipes[i];
     p.x -= pipeSpeed;
 
-    // Collision Detection
     if (
       bird.x + bird.radius > p.x && 
       bird.x - bird.radius < p.x + pipeWidth && 
@@ -130,19 +129,22 @@ function updatePipes() {
       triggerGameOver();
     }
 
-    // Add to score if we successfully pass the pipe
     if (p.x + pipeWidth < bird.x && !p.passed) {
       score++;
       p.passed = true;
       scoreDisplay.innerText = score;
 
-      // Check for victory condition!
+      // Check for mini celebration at 10, 20, 30, 40
+      if (score % 10 === 0 && score !== 0 && score < targetScore) {
+          triggerMiniCelebration();
+      }
+
+      // Check for final victory condition at 45!
       if (score === targetScore) {
         triggerVictory();
       }
     }
 
-    // Remove pipes that go off-screen
     if (p.x + pipeWidth < 0) {
       pipes.shift();
       i--;
@@ -150,71 +152,86 @@ function updatePipes() {
   }
 }
 
-// Draw the custom victory screen (Eminem, Rose, Flashy Effect, Text)
+// Canvas Confetti Logic
+function createConfetti() {
+  const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6']; 
+  for (let i = 0; i < 100; i++) {
+    confettiParticles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height, // Spawn above the screen
+      vx: (Math.random() - 0.5) * 4,     // Drift sideways
+      vy: Math.random() * 3 + 2,         // Fall down
+      size: Math.random() * 8 + 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      angle: Math.random() * 360,
+      spin: (Math.random() - 0.5) * 10
+    });
+  }
+}
+
+function drawAndProcessConfetti() {
+  for (let i = 0; i < confettiParticles.length; i++) {
+    let p = confettiParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.angle += p.spin;
+    
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle * Math.PI / 180);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+    ctx.restore();
+  }
+  // Automatically remove confetti when it falls off the bottom of the screen
+  confettiParticles = confettiParticles.filter(p => p.y < canvas.height + 50);
+}
+
+// Mini Celebration Logic (Audio + Confetti)
+function triggerMiniCelebration() {
+    cheerSound.currentTime = 0;
+    cheerSound.play().catch(e => console.log('Audio blocked'));
+    createConfetti();
+}
+
+// Victory Screen Rendering
 function drawVictoryScreen() {
-  // 1. Flash effect background 
   if (flashIntensity > 0) {
       ctx.fillStyle = 'rgba(255, 255, 255, ' + flashIntensity + ')';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      flashIntensity -= 0.05; // Fade out the flash
+      flashIntensity -= 0.05; 
   } else {
-      // Transition to a darker birthday vibe after the flash
       ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'; 
       ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  // Define some measurements for scaling the image
   let targetWidth = canvas.width * 0.9; 
   let targetHeight = 0;
   let offsetY = 0;
 
-  // 2. Safely display the end_reward image centered
   if (victoryImage.complete && victoryImage.naturalWidth > 0) {
       let imgAspectRatio = victoryImage.width / victoryImage.height;
       targetHeight = targetWidth / imgAspectRatio;
       let offsetX = (canvas.width - targetWidth) / 2;
       
-      // Push the image up a bit so there is room for the text at the bottom
       offsetY = (canvas.height - targetHeight) / 2 - 50; 
       
       ctx.drawImage(victoryImage, offsetX, offsetY, targetWidth, targetHeight);
       
-      // 3. Display the custom text below the image
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.font = 'bold 16px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you Anna", canvas.width / 2, offsetY + targetHeight + 60);
+      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, offsetY + targetHeight + 60);
       
   } else {
-      // Fallback if end_reward.png is missing
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.font = '24px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you Anna", canvas.width / 2, canvas.height / 2);
+      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, canvas.height / 2);
   }
 }
 
-// Celebratory Confetti Logic
-function createConfetti() {
-  const confettiCount = 50; // How many particles to create
-  const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6']; // Rainbow colors
-
-  for (let i = 0; i < confettiCount; i++) {
-    const confetti = document.createElement('div');
-    confetti.classList.add('confetti');
-    
-    // Set random color, starting position (X), animation duration, and delay
-    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-    confetti.style.left = Math.random() * 100 + '%'; // Random horizontal position
-    confetti.style.animationDuration = (Math.random() * 2 + 3) + 's'; // Random duration (3-5 seconds)
-    confetti.style.animationDelay = (Math.random() * 2) + 's'; // Random start delay (0-2 seconds)
-    
-    // Add to HTML container
-    confettiContainer.appendChild(confetti);
-  }
-}
-
-// State Management Functions
+// State Management
 function triggerGameOver() {
   if (gameState !== 'VICTORY') {
     gameState = 'GAMEOVER';
@@ -225,13 +242,16 @@ function triggerGameOver() {
 function triggerVictory() {
   if (gameState !== 'VICTORY') {
       gameState = 'VICTORY';
-      flashIntensity = 1; // Trigger the flash bang effect
+      flashIntensity = 1; 
       victoryScreen.classList.add('active');
       createConfetti();
+      // Play cheer for final victory
+      cheerSound.currentTime = 0;
+      cheerSound.play().catch(e => console.log('Audio blocked'));
   }
 }
 
-// Globally accessible so the HTML buttons can call it
+// Global Reset
 window.resetGame = function() {
   bird.y = canvas.height / 2;
   bird.velocity = 0;
@@ -239,6 +259,7 @@ window.resetGame = function() {
   score = 0;
   frames = 0;
   flashIntensity = 0;
+  confettiParticles = []; // Clear any remaining confetti
   scoreDisplay.innerText = score;
   gameState = 'PLAYING';
   
@@ -246,52 +267,41 @@ window.resetGame = function() {
   gameOverScreen.classList.remove('active');
   victoryScreen.classList.remove('active');
   
-  // Remove confetti divs when restarting
-  confettiContainer.innerHTML = '';
-  
   bird.flap();
 }
 
-// Input Handling (Mouse, Touch, Spacebar)
+// Input Handlers
 function handleInput() {
   if (gameState === 'START') {
     resetGame();
   } else if (gameState === 'PLAYING') {
     bird.flap();
-  } else if (gameState === 'VICTORY' && flashIntensity <= 0) {
-    resetGame();
-  } else if (gameState === 'GAMEOVER') {
-    // Allows tapping anywhere on the screen to try again
-    resetGame(); 
   }
 }
 
-// Event Listeners for click/touch
+// Event Listeners
 container.addEventListener('mousedown', (e) => {
-  // Don't intercept button clicks
-  if (e.target.tagName === 'BUTTON') return;
+  if (e.target.tagName === 'BUTTON') return; // Let buttons be clicked
+  if (gameState === 'GAMEOVER' || gameState === 'VICTORY') return; // BLOCK CLICKS if dead or won
   handleInput();
 });
 
 container.addEventListener('touchstart', (e) => {
-  // If the user tapped a button, let the browser click it normally
-  if (e.target.tagName === 'BUTTON') {
-    return;
-  }
-  // Otherwise, prevent double-tap zoom and handle the game tap
+  if (e.target.tagName === 'BUTTON') return; // Let buttons be clicked
+  if (gameState === 'GAMEOVER' || gameState === 'VICTORY') return; // BLOCK TAPS if dead or won
   e.preventDefault(); 
   handleInput();
 }, { passive: false });
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
+    if (gameState === 'GAMEOVER' || gameState === 'VICTORY') return; // BLOCK SPACEBAR if dead or won
     handleInput();
   }
 });
 
-// The Main Game Loop
+// Main Loop
 function loop() {
-  // Clear screen
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (gameState === 'PLAYING') {
@@ -299,18 +309,17 @@ function loop() {
     drawPipes();
     bird.update();
     bird.draw();
+    drawAndProcessConfetti(); // Draw confetti over the game
     frames++;
   } else if (gameState === 'GAMEOVER' || gameState === 'START') {
-    // Just draw the static state behind the menus
     drawPipes();
     bird.draw();
   } else if (gameState === 'VICTORY') {
-      // Display the custom victory screen (Eminem, flash, confetti)
       drawVictoryScreen();
+      drawAndProcessConfetti(); // Draw confetti over the victory screen
   }
 
   requestAnimationFrame(loop);
 }
 
-// Start the animation loop
 loop();
