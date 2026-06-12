@@ -221,13 +221,13 @@ function drawVictoryScreen() {
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.font = 'bold 16px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, offsetY + targetHeight + 60);
+      ctx.fillText("Well done worm, btw this is for you homegirl", canvas.width / 2, offsetY + targetHeight + 60);
       
   } else {
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.font = '24px sans-serif'; 
-      ctx.fillText("Well done noob, btw this is for you homegirl", canvas.width / 2, canvas.height / 2);
+      ctx.fillText("Well done worm, btw this is for you homegirl", canvas.width / 2, canvas.height / 2);
   }
 }
 
